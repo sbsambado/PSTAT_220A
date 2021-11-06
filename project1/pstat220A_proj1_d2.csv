@@ -1,0 +1,9 @@
+﻿Gestation,Age,Smoker,Count
+0,young,no,365
+1,young,no,4036
+0,young,yes,49
+1,young,yes,465
+0,old,no,188
+1,old,no,1608
+0,old,yes,15
+1,old,yes,125

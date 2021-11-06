@@ -1,0 +1,404 @@
+---
+title: "Homework 1"
+author: "sbsambado"
+date: "9/29/2021"
+output: html_document
+---
+
+## PSTAT220A
+
+### Homework 1: Due 10/11/21
+
+load libraries
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(car)
+library(MASS)
+```
+
+#### Question 1. Write a function that returns the following dispersion measures
+
+a) Standard deviation
+```{r}
+
+# x = outcome of interest
+
+# sd(x) = calculates standard deviation
+```
+
+b) Mean absolute deviation
+```{r}
+
+# mad(x, # fxn mad to calculate
+# center = mean(x), # median of x
+# constant = 1.4826, # scale factor
+# na.rm = FALSE, # keep NA
+# low = FALSE, #compute 'lo-median', do not average the two median values but take the smaller one)
+
+```
+
+c) Median absolute deviation
+```{r}
+# mad(x, # fxn mad to calculate
+# center = median(x), # median of x
+# constant = 1.4826, # scale factor
+# na.rm = FALSE, # keep NA
+# low = FALSE, #compute 'lo-median', do not average the two median values but take the smaller one)
+```
+
+d) interquartile range
+```{r}
+
+# IQR(x) applying IQR function
+
+```
+
+#### Question 2
+
+set up
+```{r}
+# call in library
+library(faraway)
+
+# save dataset pima
+pima <- pima
+```
+
+Pregnancy 
+```{r}
+#### Calculate PREGNANCY statistics
+
+age <- pima$age
+
+# standard deviation
+sd(age)
+
+# mean absolute deviation
+
+mad(age, # fxn mad to calculate
+center = mean(age), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+
+# median absolute deviation
+mad(age, # fxn mad to calculate
+center = median(age), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+# IQR
+
+IQR(age)
+
+
+
+# plot it out
+
+boxplot(age, 
+        main = "Pregnancies")
+
+# histogram
+hist(age)
+
+# qqPlot
+qqPlot(age,main = "Pregnancies QQplot")
+
+# kernal density
+
+plot(density(age))
+```
+
+Diastolic
+```{r}
+#### Calculate diastolic statistics
+
+diastolic <- pima$diastolic
+
+# standard deviation
+sd(diastolic)
+
+# mean absolute deviation
+
+mad(diastolic, # fxn mad to calculate
+center = mean(diastolic), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+
+# median absolute deviation
+mad(diastolic, # fxn mad to calculate
+center = median(diastolic), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+# IQR
+
+IQR(diastolic)
+
+
+
+# plot it out
+
+boxplot(diastolic, 
+        main = "diastolic")
+
+# histogram
+hist(diastolic)
+
+# qqPlot
+qqPlot(diastolic,main = "diastolic QQplot")
+
+# kernal density
+
+plot(density(diastolic))
+
+```
+
+BMI
+```{r}
+#### Calculate BMI statistics
+
+bmi <- pima$bmi
+
+# standard deviation
+sd(bmi)
+
+# mean absolute deviation
+
+mad(bmi, # fxn mad to calculate
+center = mean(bmi), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+
+# median absolute deviation
+mad(bmi, # fxn mad to calculate
+center = median(bmi), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+# IQR
+
+IQR(bmi)
+
+
+
+# plot it out
+
+boxplot(bmi, 
+        main = "Bmi")
+
+# histogram
+hist(bmi)
+
+# qqPlot
+qqPlot(bmi,main = "Bmi QQplot")
+
+# kernal density
+
+plot(density(bmi))
+
+```
+
+Age
+```{r}
+#### Calculate AGE statistics
+
+age <- pima$age
+
+# standard deviation
+sd(age)
+
+# mean absolute deviation
+
+mad(age, # fxn mad to calculate
+center = mean(age), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+
+# median absolute deviation
+mad(age, # fxn mad to calculate
+center = median(age), # median of x
+constant = 1.4826, # scale factor
+na.rm = FALSE, # keep NA
+low = FALSE) #compute 'lo-median', do not average the two median values but take the smaller one
+
+# IQR
+
+IQR(age)
+
+
+
+# plot it out
+
+boxplot(age, 
+        main = "Age")
+
+# histogram
+hist(age)
+
+# qqPlot
+qqPlot(age,main = "Age QQplot")
+
+# kernal density
+
+plot(density(age))
+```
+
+
+
+#### Question 3
+
+ANSWER: Normality is plausible for precipitation in March over a 30 year period in St. Paul. The one outlier 29 which is outside of 95CI. Point 20 is close to being an outlier but majority of the points in this sample follow a normal distribution... However, log transformation of precipitation made it follow a more normal distribution. Because there were no 0s I did not need to add +1 to precipiation vector.
+
+set up
+```{r}
+
+# make data vector
+precip <- c(.77, 1.20, 3, 1.62, 2.81, 2.48, 1.74, .47, 3.09, 1.31, 1.87, .96, .81, 1.43, 1.51, .32, 1.18, 1.89, 1.20, 3.37, 2.10, .59, 1.35, .9, 1.95, 2.2, .52, .81, 4.75, 2.05)
+
+```
+
+a) Construct qqplot
+```{r}
+qqPlot(precip, 
+       main = "Precipitation QQ-plot") 
+
+```
+
+b) I will try a log transformation to see if I can improve it
+```{r}
+qqPlot(log(precip))
+
+```
+
+
+#### Question 4
+
+ANSWER: Log normal distribution is the best fit model because the tractor data points fall close to the 1:1 line on the qqplot. 
+
+set up
+```{r}
+# make data vector
+
+tractors <- c(4381, 3953, 2603, 2320, 1161, 3286, 6914, 4007, 3168, 2376, 7498, 3923, 9460, 4525, 2168, 1288, 5085, 2217, 6922, 218, 1309, 1875, 1023, 1697, 1038, 3699, 6142, 4732, 3330, 4159, 2537, 3814, 2157, 7683, 5539, 4839, 6052, 2420, 5556, 309, 1295, 3266, 6679, 1711, 5931)
+
+
+fitdistr(tractors, "normal")
+fitdistr(tractors, "lognormal")
+fitdistr(tractors, "exponential")
+fitdistr(tractors, "gamma", rate = 1)
+
+
+```
+
+Make qqplots
+```{r}
+
+#################### NORMAL
+
+library(MASS)
+
+# log
+x <- rnorm(tractors)
+qqnorm(x)
+qqline(x)
+
+plot(qnorm(ppoints(x), 3), sort(x),
+     main = "normal qqplot")
+abline(0,1)
+
+#################### Lognormal
+
+# log
+x <- rlogis(tractors, scale = 1)
+qqnorm(x)
+qqline(x)
+
+plot(qlogis(ppoints(x), 3), sort(x),
+     main = "log normal qqplot")
+abline(0,1)
+
+#################### Exponential 
+
+x <- rexp(tractors, rate = 1)
+qqnorm(x)
+qqline(x)
+
+plot(qexp(ppoints(x), 3), sort(x),
+     main = "exponential qqplot")
+abline(0,1)
+
+
+#################### Gamma
+
+# gamma
+x <- rgamma(tractors, shape = 1)
+qqnorm(x)
+qqline(x)
+
+plot(qgamma(ppoints(x), 3), sort(x),
+     main = "gamma qqplot")
+abline(0,1)
+
+```
+
+compare pdf with kernal density estimate
+```{r}
+# pdf
+fitdistr(tractors, "lognormal")
+
+# kernal density estimate
+density(tractors)
+```
+
+#### Question 5
+
+ANSWER: The histogram from the exponential distribution with rate 1 is right skewed and non-normal. The histogram of 50 groups with 100 samples is more normal distribution than the first. This may because we took the average of the random samples in groups instead of plotting the individual exponential distribution.
+
+```{r}
+# generate 5000 random samples from exponential distribution
+exp <- rexp(5000, rate = 1) 
+
+# make histogram
+hist(exp) 
+
+# break in 50 groups with 100 samples in each group & compute averages
+exp$mean <- ave(exp, rep(1:50), each = 100)
+
+# plot histogram
+hist(exp$mean)
+
+```
+
+#### Question 6
+
+ANSWER: I would expect the sample to follow a normal distribution because we specified normal distribution when we generated the samples. After computing the statistic the distribution became non-normal - a not expected distribution - although it was slightly right skewed with normal dispositions. 
+```{r}
+
+# generate 600 random samples with mu = 10, sd = 5
+norm <- rnorm(600, mean = 10, sd = 5)
+
+hist(norm)
+
+# divide into 100 groups with 6 samples
+sub_norm <- ave(norm, rep(1:100), each = 6)
+
+# calculate the stat
+stat <- (sub_norm - 10 )/ ((sqrt(25)/6))
+
+hist(stat)
+```
+

@@ -1,0 +1,632 @@
+---
+title: "PSTAT200A Project 1"
+author: "Samantha Sambado"
+date: "11/2/2021"
+output:
+  pdf_document: null
+  bibliography: references.bib
+  link_citations: yes
+  word_document: default
+---
+
+```{r setup, include=FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(tinytex)
+library(gtsummary)
+```
+
+
+## **Title**
+My body is your body: a mother's impact on their babies health
+
+## **Executive Summary**
+
+Young mothers that do not smoke are more likely to have a baby that is brought to full term and survives to year 1. Although smoking in general decreases the probability of a baby being brought to full term and surviving, based on the given data, a mother's age may be a more important factor in gestation and survival outcomes. 
+
+## **Introduction**
+
+Mothers play a fundamental role in the health of their children, especially during pregnancy when babies rely solely on their mother for nutrients. Oxygen, food, and chemicals from the mother's blood can be shared with the baby via the umbilical cord (**Dawe et al. 2007**). This kind of physiological connection can be beneficial in most cases or negative if the mother is a smoker. Smoking during pregnancy increases the risk of health problems for babies and moms (**Banderali et al. 2015**). 
+
+Current literature has shown that smoking causes lung cancer and can cause serious problems for babies while in utero. Some potential negative effects for babies could be babies born premature and birth defects which can create long term health problems or sudden infant death syndrome (SIDS) (**CDC 2017**). The literature also suggests that older women, particularly over the age of 40, have an increased rate of complications during pregnancy that can result in negative health effects for both baby and mom, but this literature is not as clear as the effects of smoking habits on baby's health. 
+
+A survey of **6,851** responses was collected regarding mother and baby demographic information. For the mother, their age (young or older) and smoking habits (no or yes) were collected. For the baby, the gestation period (premature or full term) and survival outcome within its 1st year (died or alive) was recorded. Majority of the respondents were young mother's (**n = 4,915; 72%**) or non smokers (**n = 6,197; 90%**). Majority of babies were brought to full term and were alive at their 1st year (**n = 6,189; 90%**). A potential outlier, or inconsistency, within this dataset would be an older mother who smoked and gave birth to 1) a full term baby that died at year 1 (**n = 1**), or 2) a premature baby that died at year 1 (**n = 4**).
+
+```{r}
+Age <- c("Young","Young", "Older","Older")
+Smoker <- c("No","Yes","No","Yes")
+
+matrix <- matrix(c(50,9, 41,4, 315,40,147,11,24,6,14,1,4012,459,1594,124), ncol = 4,nrow = 4)
+
+colnames(matrix) <- c("Premature (died)", "Premature (alive)", "Full term (dead)", "Full term (alive)")
+Total_row <- as.numeric(c(4401,514,1796, 140))
+Total_columnn <- as.numeric(c(104,513,45,6189,6851))
+full <- cbind(Age, Smoker, matrix, Total_row)
+Total_column <- c("","",Total_columnn)
+full <- rbind(full, Total_column)
+
+kable(full, caption = "Full data table", align = "l",   
+      format.args = list(big.mark = ","),format="latex", booktabs=TRUE) %>%
+  kable_styling(position = "l", bootstrap_options = c("striped","hoover", latex_options="scale_down"),
+                font_size = 8)
+```
+
+## **Methods**
+
+For each part of the report, I manually summed counts for the particular groupings of interest to address the individual questions. Summary tables of counts for each questions and visualized with mosaic plots can be found in the Appendix (**Table 2 - 8**). All analyses in R were completed with version 1.4.1717.
+
+To compare the age of mother's to their smoking habit (**part A**), I performed a proportion comparison using the `prop.test()` function in R. I compared the counts of young and older mother's that reported yes for smoking. To test the hypothesis: $H_0: p_{young} = p_{old}$ ; $H_1: p_{young} \ne p_{old}$
+
+
+To test the independence of two variables (**part B & C**), particularly the health of the baby with characteristics of the mother, a Pearson's Chi-squared test with Yates' continuity correction was conducted with the `chi.square()` function in R. We tested the following hypotheses: 
+
++ **Part B1** $H_0: p_{smoker habit} = p_{gestation}$ ; $H_1: p_{smoker habit} \ne p_{gestation}$.
+
+
++ **Part B2** $H_0: p_{age} = p_{gestation}$ ; $H_1: p_{age} \ne p_{gestation}$. 
+
++ **Part C1** $H_0: p_{smoker habit} = p_{survival}$ ; $p_{smoker habit} \ne p_{survival}$.
+
+
++ **Part C2** $H_0: p_{age} = p_{survival}$ ; $p_{age} \ne p_{survival}$.
+
+To look at how mother's characteristics affect baby survival (**part D, E, F**), a binomial logistic model was performed with `glm()` function. A logistic regression model allows the outcome variable, y, to be binary for 1 = success and 0 = failure. The binomial outcome was deemed **success** if the *baby survived (alive)* or if gestation was carried to *full term* and **failure** if the baby did *not survive (dead)* or was a *premature* birth. Tables for data used in each binomial model(**Table 9 - 11**) and model outputs (**Fig 1 - 5**)are in the Appendix (Table ).
+
+
+```{r }
+d1 <- read_csv("pstat220A_proj1_d1.csv")
+
+d1_uncount <- uncount(d1,Count)
+
+model_d1 <- glm(Survival ~ Age + Smoker, family = binomial(link = "logit"), data = d1_uncount)
+#summary(model_d1)
+
+# #colSums(d1[,4])
+# d1$percentage <- round(d1$Count/6851, digits = 3)
+# d1$percentage <- d1$percentage * 100
+# 
+# names(d1) <- c("Survival", "Age", "Smoker", "Count", "Percentage")
+# kable(d1, caption = "Part D1. Gestation (died = 1, alive = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+#   kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+#   collapse_rows()
+```
+
+
+```{r }
+d2 <- read_csv("pstat220A_proj1_d2.csv")
+
+d2_uncount <- uncount(d2,Count)
+
+model_d2 <- glm(Gestation ~ Age + Smoker, family = binomial(link = "logit"), data = d2_uncount)
+#summary(model_d2)
+
+
+# #colSums(d2[,4])
+# d2$percentage <- round(d2$Count/6851, digits = 3)
+# d2$percentage <- d2$percentage * 100
+# 
+# names(d2) <- c("Gestation", "Age", "Smoker", "Count", "Percentage")
+# kable(d2, caption = "Part D2. Gestation (full term = 1, premature = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+#   kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+#   collapse_rows()
+```
+
+```{r }
+e <- read_csv("pstat220_proj1_e.csv")
+
+e_uncount <- uncount(e,Count)
+
+model_e <- glm(Survival_premature ~ Age + Smoker, family = binomial(link = "logit"), data = e_uncount)
+#summary(model_e)
+
+
+# #colSums(e[,4])
+# e$percentage <- round(e$Count/617, digits = 3)
+# e$percentage <- e$percentage * 100
+# 
+# names(e) <- c("Premature survival", "Age", "Smoker", "Count", "Percentage")
+# kable(e, caption = "Part E. Survival of premature babbies (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+#   kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+#   collapse_rows()
+```
+
+```{r }
+f1 <- read_csv("pstat220A_proj1_f1.csv")
+
+f1_uncount <- uncount(f1,Count)
+
+f1$Smoker <- as.factor(f1$Smoker)
+
+model_f1 <- glm(Survival_premature_young ~ Smoker, family = binomial(link = "logit"), data = f1_uncount)
+#summary(model_f1)
+
+
+# #colSums(f1[,3])
+# f1$percentage <- round(f1$Count/414, digits = 3)
+# f1$percentage <- f1$percentage * 100
+# 
+# names(f1) <- c("Premature survival", "Smoker", "Count", "Percentage")
+# kable(f1, caption = "Part F1. Survival of premature babbies with young mothers (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+#   kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position")
+
+```
+
+
+
+```{r  }
+f2 <- read_csv("pstat220a_proj1_f2.csv")
+
+f2_uncount <- uncount(f2,Count)
+
+f2$Smoker <- as.factor(f2$Smoker)
+
+model_f2 <- glm(Survival_premature_old ~ Smoker, family = binomial(link = "logit"), data = f2_uncount)
+#summary(model_f2)
+
+
+# #colSums(f2[,3])
+# f2$percentage <- round(f2$Count/203, digits = 3)
+# f2$percentage <- f2$percentage * 100
+# 
+# names(f2) <- c("Premature survival", "Smoker", "Count", "Percentage")
+# kable(f2, caption = "Part F2. Survival of premature babbies with older mothers (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+#   kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position")
+
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+
+
+b_1 <- matrix(c(64,590,553,5644),ncol =2)
+colnames(b_1) <- c("Yes","No")
+rownames(b_1) <- c("Premature","Full term")
+
+mosaicplot(b_1, main = "Smoker & Gestation",
+           xlab = "Smoker", ylab = "Gestation",
+           color = TRUE)
+
+
+b_2 <- matrix(c(203,414,1733,4501),ncol =2)
+rownames(b_2) <- c("Old","Younger")
+colnames(b_2) <- c("Premature","Full term")
+
+mosaicplot(b_2, main = "Age & Gestation",
+           xlab = "Age", ylab = "Gestation",
+           color = TRUE)
+
+
+c_1 <- matrix(c(20,634,129,6068),ncol =2)
+rownames(c_1) <- c("Dead","Alive")
+colnames(c_1) <- c("Yes","No")
+
+mosaicplot(c_1, main = "Smoker & Survival",
+           xlab = "Smoker", ylab = "Survival",
+           color = TRUE)
+
+c_2 <- matrix(c(60,89,1876,4826),ncol =2)
+colnames(c_2) <- c("Dead","Alive")
+rownames(c_2) <- c("Old","Young")
+
+mosaicplot(c_2, main = "Age & Survival",
+           xlab = "Age", ylab = "Survival",
+           color = TRUE)
+
+
+```
+
+## **Results**
+
+**Part A:** Younger mothers are more likely to smoke. Based on the proportion test, the proportion of young mothers and the proportion of older mothers that are likely to smoke are significantly not equal (**X-squared = 16.372, df = 1, p-value = 5.204e-05**). The proportion of young and older mothers that smoke is 0.10 and 0.07, respectively.
+```{r}
+# young smoke/ young total = 514/ 514 + 4401 = 514/4915
+# old smoke/ old total = 140/ 140+1796 = 140/1936
+
+#compare two proportions
+# success  = smokes
+#prop.test(c(514,140), c(4915,1936))
+# X-squared = 16.372, df = 1, p-value = 5.204e-05
+# 95 CI: 0.01754066 - 0.04698689
+# prop 1 = 0.10457782 [young smokers]
+# prop 2 = 0.07231405 [old smokers]
+
+
+## p < 0.05, reject H0, so proportion of young smokers is not equal to old smokers
+```
+
+
+**Part B:** Smokers are more likely to have premature babies than non-smokers, 78.6% and 8.9%, respectively. Based on the chi-square test, smoking habit and gestation outcome preterm are not independent of each other (**X-squared = 2178.5, df = 1, p-value < 2.2e-16**). Although not as statistically significant as smoking habit, older mothers are more likely to have premature babies compared to young mothers, 10.4% and 9.2%, respectively. Based on the chi-square test, mother age is not independent of gestation outcome preterm (**X-squared = 6.9592, df = 1, p-value = 0.008339**).
+
+```{r}
+
+
+# smokers total = 514 / 654 *100 (78.59%) preterm
+# non-smokers total = 552/ 6197 *100 (8.90%)
+x <- matrix(c(553, 514, 5644,140), 2,2,)
+#chisq.test(x)
+# X-squared = 2178.5, df = 1, p-value < 2.2e-16
+
+# p < 0.05 reject H0 that smoking and premature babies are independent. meaning they are not independent (smoking and premature)
+
+x <- matrix(c(203,414,1733,4501),2,2)
+#chisq.test(x)
+# X-squared = 6.9592, df = 1, p-value = 0.008339
+
+# p < 0.05, reject H0 (independent) meaning age and prematurity are not independent
+
+# old preterm: 203/1936 = 10.5%
+# young preterm: 414/4501 = 9.2%
+
+```
+
+**Part C:** Smokers are not more likely than non smokers to have babies that died in the 1st year, 3.0% and 2.1%, respectively. Based on the chi square test, smoking habit is independent of baby survival in the 1st year (**X-squared = 2.212, df = 1, p-value = 0.1369**). Older mothers are more likely to have babies who die in the 1st year compared to young mothers, 3.1% and 1.8%, respectively.Based on the chi-quare test, age and survival outcome died are not independent of each other (**X-squared = 10.239, df = 1, p-value = 0.001375**).
+
+```{r}
+# smoking and survival
+
+x <- matrix(c(20,129,634,6068),2,2)
+#chisq.test(x)
+# X-squared = 2.212, df = 1, p-value = 0.1369
+
+# p > 0.05, fail to reject H0, smoking and surival are independent
+
+# yes dead: 20/659 (3.0%)
+# no dead: 129/6197 (2.1%)
+
+
+# age and survival
+
+x <- matrix(c(60,89,1876,4826),2,2)
+#chisq.test(x)
+# X-squared = 10.239, df = 1, p-value = 0.001375
+
+# p < 0.05, reject H0, age and survival are dependent
+
+# old dead = 60/1936 (3.1%)
+# young dead = 89/4915 (1.8%)
+```
+
+
+**Part D:** For part 1, *age* significantly affects *survival* whereas smoking does not. Specially, young mothers are positive coefficient in the model (Appendix **Fig 1**: **estimate = 0.5679, std. error = 0.1697, z-value =  3.347, p-value = 0.000816**) with the probability of baby survival (success = 1) increasing by 0.56, or odds ratio of 1.76, with a young mother. For part 2, *age* significantly affects *gestational* outcome whereas smoking does not. Specially, young mothers are a postivie coefficient in the model (Appendix **Fig 2**: **estimate = 0.24589, std. error = 0.09037, z-value =  2.721, p-value = 0.00651**) with the probability of gestational outcome full term (success = 1) increasing by 0.25, or odds ratio of 1.74, with a young mother. 
+
+
+**Part E :** *Age* significantly affects *survival* among *premature* babies whereas smoking does not. Specially, young mothers are positive coefficient in the model (Appendix **Fig 3**: **estimate = 0.5551, std. error = 0.2208, z-value =  2.514, p-value = 0.0119**) with the probability of premature baby survival (success = 1) increasing by 0.56, or odds ratio of 1.74, with a young mother.
+
+
+**Part F:** Smoking habits does significantly affect survival among premature babies with young mothers (Appendix **Fig 4**: **estimate = 1.8405, std. error = 0.1522, z-value =  12.090, p-value <2e-16**) and with older mothers - although older mothers have less of an affect (Appendix **Fig 5**: **estimate = 1.2769, std. error = 0.1766, z-value =  7.230, p-value = 4.84e-13**).
+
+
+## **Conclusions & Recommendations**
+
+Contemporary trends highly encourage women to not smoke (or drink) during pregnancy, although the data collected for this survey suggests that a woman's smoking habit may be less of an effect than a mother's age on gestation and survival. However, I am cautious to recommend smoking for pregnant women and would like to explore these questions with a fuller set of explanatory variables such as a woman's socioeconomic status, access to health care, and adherence to pregnancy vitamins and a healthy diet. It is possible that when this data set was collected (pre-1980?), smoking was not as taboo as it is now in 2000s. Before smoking became a taboo, smoking was a sign of wealth because cigarettes are expensive. It may be that when this data was collected, smoking was partaken by wealthy women who had the means to achieve a healthy and successful pregnancy due to their access to health care and support system. 
+
+However, a trend that has remained in place is the negative association and outcomes for older women who decide to give birth. This current trend of delayed childbearing is exacerbated in cities with highly educated women who delay childbearing in order to pursue a career (**Cooke et al. 2012**). With an advancement of a career, older woman may have increased access to similar wealth metrics that may have skewed the smoking data trend in the previous paragraphs. However, despite these economic advantages, physiology dictates that it is biologically easier to have a successful pregnancy at an earlier age no matter the economic status. 
+
+Another factor to keep in mind which may skew results is the country where this study took place. The prevalence of smoking during pregnancy varies globally based on cultural norms. In industrialized countries, prevalence rates have become to decline whereas in other countries smoking is becoming increasingly common among young women (**Cnattingius et al. 2004**). More epidemiological information regarding survey respondents place of residence would be beneficial to make sure all respondents are either coming from the same region or country or are randomly sampled from a global population.
+
+I do not make recommendations for when a woman decides to have a child or not and believe such recommendations should be personal with access to the most current available data and advice from a physician. However, I will generally recommend that smoking is not the best chemical to share with your baby during pregnancy if given the option for a healthier lifestyle. It is never to late to stop smoking to protect the mother's and baby's health.
+
+**Additional links to support for quitting during pregnancy**
+
+>[Pregnancy, Motherhood, and Smoking](https://women.smokefree.gov/pregnancy-motherhood)
+
+> [Feelings, Partners, and Friends](https://women.smokefree.gov/your-relationships)
+
+## Appendix
+
+
+### References
+
+#### Scientific literature  
+
+
+
+
+
++ **Banderali**, G., A. Martelli, M. Landi, F. Moretti, F. Betti, G. Radaelli, C. Lassandro, and E. Verduci. 2015. Short and long term health effects of parental tobacco smoking during pregnancy and lactation: a descriptive review. Journal of Translational Medicine 13:327.
+
++ **CDC**. 2017. Tobacco use and pregnancy.
+
++ **Cnattingius**, S. 2004. The epidemiology of smoking during pregnancy: Smoking prevalence, maternal characteristics, and pregnancy outcomes. Nicotine & Tobacco Research 6:125–140.
+
++ **Cooke**, A., T. A. Mills, and T. Lavender. 2012. Advanced maternal age: delayed childbearing is rarely a conscious choice a qualitative study of women’s views and experiences. International journal of nursing studies 49:30–9.
+Dawe, G. S., X. W. Tan, and Z.-C. Xiao. 2007. Cell migration from baby to mother. Cell adhesion & migration 1:19–27.
+
+#### R packages
+```{r}
+knitr::write_bib(c("knitr","kableExtra", "ggplot2", "tidyverse","gtsummary"), "", width = 60)
+
+```
+
+
+
+## Addition Tables and Figures
+
+## Count tables for analyses
+
+
+#### **Part A**
+
+```{r}
+a <- matrix(c(514,140,4401,1796),ncol =2)
+colnames(a) <- c("Yes","No")
+rownames(a) <- c("Young","Older")
+#mosaicplot(a) 
+
+a <- as.data.frame(a)
+
+kable(a, caption = "Age and smoking habits", align = "c",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c",bootstrap_options = c("striped","hoover"), latex_options = "HOLD_position") %>%
+  add_header_above(c("", "Smoker" = 2))
+```
+
+#### **Part B**
+
+```{r}
+b <- matrix(c(64,590,553,5644),ncol =2)
+colnames(b) <- c("Yes","No")
+rownames(b) <- c("Premature","Full term")
+#mosaicplot(b) 
+
+b <- as.data.frame(b)
+
+kable(b, caption = "Gestation and smoking habits", align = "c",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  add_header_above(c("", "Smoker" = 2)) 
+```
+
+```{r}
+b_2 <- matrix(c(203,414,1733,4501),ncol =2)
+rownames(b_2) <- c("Old","Younger")
+colnames(b_2) <- c("Premature","Full term")
+
+b_2 <- as.data.frame(b_2)
+
+kable(b_2, caption = "Gestation and age", align = "c",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  add_header_above(c("", "Gestation" = 2)) 
+```
+
+#### **Part C**
+
+```{r}
+c_1 <- matrix(c(20,634,129,6068),ncol =2)
+rownames(c_1) <- c("Dead","Alive")
+colnames(c_1) <- c("Yes","No")
+
+c_1 <- as.data.frame(c_1)
+
+kable(c_1, caption = "Baby survival and smoking habits", align = "c",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  add_header_above(c("", "Smoker" = 2)) 
+
+```
+
+```{r}
+c_2 <- matrix(c(60,89,1876,4826),ncol =2)
+colnames(c_2) <- c("Dead","Alive")
+rownames(c_2) <- c("Old","Young")
+
+c_2 <- as.data.frame(c_2)
+
+kable(c_2, caption = "Baby survival and age", align = "c",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  add_header_above(c("", "Baby Survival" = 2))
+```
+
+#### **Part D**
+
+```{r d1}
+d1 <- read_csv("pstat220A_proj1_d1.csv")
+
+d1_uncount <- uncount(d1,Count)
+
+model_d1 <- glm(Survival ~ Age + Smoker, family = binomial(link = "logit"), data = d1_uncount)
+#summary(model_d1)
+
+#colSums(d1[,4])
+d1$percentage <- round(d1$Count/6851, digits = 3)
+d1$percentage <- d1$percentage * 100
+
+names(d1) <- c("Survival", "Age", "Smoker", "Count", "Percentage")
+kable(d1, caption = "Gestation (died = 1, alive = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  collapse_rows()
+```
+
+
+```{r d2}
+d2 <- read_csv("pstat220A_proj1_d2.csv")
+
+d2_uncount <- uncount(d2,Count)
+
+model_d2 <- glm(Gestation ~ Age + Smoker, family = binomial(link = "logit"), data = d2_uncount)
+#summary(model_d2)
+
+
+#colSums(d2[,4])
+d2$percentage <- round(d2$Count/6851, digits = 3)
+d2$percentage <- d2$percentage * 100
+
+names(d2) <- c("Gestation", "Age", "Smoker", "Count", "Percentage")
+kable(d2, caption = "Gestation (full term = 1, premature = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  collapse_rows()
+```
+
+
+
+
+
+```{r}
+# #summary(model_d2)
+# tbl_regression(model_d2, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05) %>%
+#   as_gt() %>%
+#    gt::tab_header("Gestation (0/1) ~  Age + Smoker")
+
+```
+
+
+#### **Part E**
+```{r e}
+e <- read_csv("pstat220_proj1_e.csv")
+
+e_uncount <- uncount(e,Count)
+
+model_e <- glm(Survival_premature ~ Age + Smoker, family = binomial(link = "logit"), data = e_uncount)
+#summary(model_e)
+
+
+#colSums(e[,4])
+e$percentage <- round(e$Count/617, digits = 3)
+e$percentage <- e$percentage * 100
+
+names(e) <- c("Premature survival", "Age", "Smoker", "Count", "Percentage")
+kable(e, caption = "Survival of premature babbies (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position") %>%
+  collapse_rows()
+```
+
+
+
+
+
+#### **Part F**
+
+
+```{r f1}
+f1 <- read_csv("pstat220A_proj1_f1.csv")
+
+f1_uncount <- uncount(f1,Count)
+
+f1$Smoker <- as.factor(f1$Smoker)
+
+model_f1 <- glm(Survival_premature_young ~ Smoker, family = binomial(link = "logit"), data = f1_uncount)
+#summary(model_f1)
+
+
+#colSums(f1[,3])
+f1$percentage <- round(f1$Count/414, digits = 3)
+f1$percentage <- f1$percentage * 100
+
+names(f1) <- c("Premature survival", "Smoker", "Count", "Percentage")
+kable(f1, caption = "Survival of premature babbies with young mothers (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position")
+
+```
+
+
+
+```{r f2 }
+f2 <- read_csv("pstat220a_proj1_f2.csv")
+
+f2_uncount <- uncount(f2,Count)
+
+f2$Smoker <- as.factor(f2$Smoker)
+
+model_f2 <- glm(Survival_premature_old ~ Smoker, family = binomial(link = "logit"), data = f2_uncount)
+#summary(model_f2)
+
+
+#colSums(f2[,3])
+f2$percentage <- round(f2$Count/203, digits = 3)
+f2$percentage <- f2$percentage * 100
+
+names(f2) <- c("Premature survival", "Smoker", "Count", "Percentage")
+kable(f2, caption = "Survival of premature babbies with older mothers (alive = 1, dead = 0)", align = "l",   format.args = list(big.mark = ",")) %>%
+  kable_styling(position = "c", bootstrap_options = c("striped","hoover"),latex_options = "HOLD_position")
+
+```
+
+## **Model outputs**
+
+
+#### **Model outputs for D**
+
+```{r}
+summary(model_d1)
+# tbl_regression(model_d1, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05)%>%
+#   as_gt() %>%
+#    gt::tab_header("Survival (0/1) ~  Age + Smoker")
+
+```
+
+![Survival (0/1) ~  Age + Smoker (Part D1)](screenshot/pstat220_proj1_d1.png)
+
+
+```{r}
+summary(model_d2)
+# tbl_regression(model_d2, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05) %>%
+#   as_gt() %>%
+#    gt::tab_header("Gestation (0/1) ~  Age + Smoker")
+
+```
+
+![Gestation (0/1) ~  Age + Smoker (Part D2)](screenshot/pstat220_proj1_d2.png)
+
+#### **Model outputs for E**
+
+
+```{r}
+summary(model_e)
+# tbl_regression(model_e, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05) %>%
+#   as_gt() %>%
+#    gt::tab_header("Premature Baby Survival (0/1) ~  Age + Smoker")
+```
+
+![Premature Baby Survival (0/1) ~  Age + Smoker](screenshot/pstat220_proj1_e.png)
+
+#### **Model outputs for F**
+
+```{r}
+summary(model_f1)
+# tbl_regression(model_f1, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05)%>%
+#   as_gt() %>%
+#    gt::tab_header("Young Mothers: Premature Baby Survival (0/1) ~  Smoker")
+```
+
+![Young Mothers: Premature Baby Survival (0/1) ~  Smoker](screenshot/pstat220_proj1_f1.png)
+
+
+```{r}
+summary(model_f2)
+# tbl_regression(model_f2, exponentiate = TRUE) %>%
+#   bold_labels() %>%
+#   bold_p(t = .05)%>%
+#   as_gt() %>%
+#    gt::tab_header("Older Mothers: Premature Baby Survival (0/1) ~  Smoker")
+```
+
+
+![Older Mothers: Premature Baby Survival (0/1) ~  Smoker](screenshot/pstat220_proj1_f2.png)
+
+### Mosaic plots for Part A
+
+
+```{r fig.width = 4, fig.height = 4}
+a <- matrix(c(514,140,4401,1796),ncol =2)
+colnames(a) <- c("Yes","No")
+rownames(a) <- c("Young","Older")
+
+mosaicplot(a, main = "Age & Smoker",
+           xlab = "Age", ylab = "Smoker",
+           color = TRUE)
+
+
+```
