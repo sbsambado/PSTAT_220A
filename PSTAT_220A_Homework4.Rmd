@@ -1,0 +1,36 @@
+---
+title: "PSTAT220A Homework 4"
+author: "sbsambado"
+date: "11/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(faraway)
+```
+
+## Question 1
+```{r}
+# upload data
+teen <- teengamb
+
+# run linear model
+mod1 <- lm(gamble ~ income, data = teen)
+
+# plot model results
+plot(mod1)
+```
+
+#### A) 
+Based on the 'Residuals vs Fitted' graph, there is a slight pattern but because most residuals fall along the 0 line and the pattern is not cone shaped I think mod1 (income ~ income) does not violate the constant variance assumption for the purposes of this class. 
+
+#### B)
+Based on the 'Normal Q-Q' graph, majority of the points fall along the 1:1 line so I think mod1 meets the normality assumptions. Although there are points such as 17, 36, 24 that are some distance from the 1:1 line, I still would deem this data normally distributed until I further investigate how these outliers were collected and their biological relevance.
+
+#### C)
+Based on the 'Scale-Location' graph, there are large leverage points such as 36,24,17 and occur when income is relatively large. 
+
+#### D)
+Based on the 'Relevance vs Leverage'
+
