@@ -1,0 +1,1108 @@
+---
+title: "In class code notes"
+author: "sbsambado"
+date: "11/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(car)
+library(psych)
+library(MASS)
+```
+
+## Slide Set 1 --> review
+
+```{r}
+library(faraway)
+data(pima)
+help(pima)
+
+data(pima)
+
+pima[1:10,]
+
+summary(pima)
+
+
+library(MASS)
+
+attach(michelson)
+
+tapply(Speed, Expt, summary)
+
+tapply(Speed, Expt, mean)
+
+tapply(Speed, Expt, median)
+
+round(tapply(Speed, Expt, var), 2)
+
+
+
+eda.shape <- function(x) {
+  par(mfrow = c(2,2)) 
+  hist(x)
+  boxplot(x)
+  qqnorm(x)
+  qqline(x)
+  plot(density(x))
+}
+
+x <- Speed[Expt==3]
+eda.shape(x)
+eda.shape(log(x))
+eda.shape(sqrt(x))
+
+```
+
+#### QQ-plot checking distribution
+```{r}
+pdf(file = "qq1.pdf", height = 3, width = 4, pointsize = 8)
+par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1)+ 0.1)
+
+# heavy tailed
+x <- rt(200, df = 3)
+qqnorm(x)
+qqline(x)
+
+plot(qt(ppoints(x), 3), sort(x),
+     xlab = "theoretical quantiles", ylab = "sample quantiles", main = "t qq plot")
+abline(0,1)
+
+# skewed
+x <- rchisq(200, df = 3)
+qqnorm(x)
+qqline(x)
+
+plot(qchisq(ppoints(x), 3), sort(x),
+     main = "chi square qqplots")
+abline(0,1)
+dev.off()
+
+## comparing two samples
+pdf(file = "qq1.pdf", height = 3, width = 4, pointsize = 8)
+par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1)+ 0.1)
+
+qqplot(rnorm(200), rt(200,5))
+abline(0,1)
+
+qqplot(rt(200,3), rt(200,3))
+abline(0,1)
+
+qqplot(rnorm(200,3), rchisq(200,3))
+abline(0,1)
+
+qqplot(rchisq(200,3), rchisq(200,3))
+abline(0,1)
+```
+
+#### T-tests
+```{r}
+library(MASS)
+attach(shoes)
+
+boxplot(shoes)
+
+
+## two sample t-test (unequal variance)
+t.test(A,B)
+
+# test equal variance
+var.test(A,B)
+
+## two sample t-test (equal variance)
+t.test(A,B, var.eq = T)
+
+
+## Wilcoxon rank sum test
+wilcox.test(A,B)
+
+rank(c(A,B))
+
+sum(rank(c(A,B))[1:10]) - sum(1:10)
+
+# is independence assumption appropriate?
+par(sty = "s")
+plot(A,B)
+abline(0,1)
+
+## paired t-test
+t.test(A,B, pair = T)
+
+
+## Wilcoxon signed rank test
+wilcox.test(A,B, pair = T)
+
+# to see how V is calculated
+d <- A-B
+rank(abs(d))
+sum(rank(abs(d))[d>0])
+```
+
+
+
+#### Pearson's sample correlation
+```{r}
+cor.test(A,B, method = "pearson")
+
+## spearman's rank - nonparametric
+
+cor.test(A, B, method = "spearman")
+```
+#### Simulation comparing t and Wilcoxon test
+```{r}
+n <- 10
+nsim <- 1000
+
+d <- seq(0,2, len = 10)
+
+
+pt <- pw <- matrix(NA, 10, nsim)
+
+for(j in 1:10) {
+  for(i in 1:nsim) {
+    y <- rnorm(n, mean = d[j], sd = 1)
+    pt[j,i] <- t.test(y)$p.value
+    pw[j,i] <- wilcox.test(y)$p.value
+  }
+}
+
+powet <- apply(pt <.05,1, mean)
+powerw <- apply(pw<.05,1,mean)
+
+print(rbind(powet, powerw))
+
+plot(d, powerw, type = "b", pch = "t", xlab= "d", ylab = "power")
+points(d, powerw, type = "b", pch = "w", col = "red")
+```
+#### Permutation test for shoes
+```{r}
+d <- A - B
+n <- length(d)
+
+d.perm <- matrix(abs(d), n, 1000)
+d.perm <- d.perm*sign(runif(1000*n)-.5)
+d.bar <- apply(d.perm, 2, mean)
+
+# null distribution by permutation
+hist(d.bar, freq = F)
+abline(v = mean(d), col = "red")
+
+mean(abs(d.bar) > abs(mean(d)))
+```
+#### Boostrap confidence intervals for shoes
+```{r}
+d <- A-B
+
+boot.smpl <- matrix(d, length(d), 1000)
+boot.smpl <- apply(boot.smpl, 2, sample, r = T)
+boot.md <- apply(boot.smpl,2,median)
+
+var(boot.md)
+
+quantile(boot.md, c(.025,.975))
+
+hist(boot.md, freq = F)
+abline(v = c(-.65, -.1), col = "red")
+```
+#### Inference on a proportion
+```{r}
+binom.test(c(682,243), p = 3/4)
+```
+#### Compare two proportions
+```{r}
+# not z-testm same as following chisq.test
+
+prop.test(c(19,17), c(160,166))
+
+x <- matrix(c(19,141,17,149),2,2)
+chisq.test(x)
+```
+#### goodness of fit test
+```{r}
+# potatoes
+x <- c(926, 288, 293, 104)
+chisq.test(x, p = c(9,3,3,1)/16)
+
+# blood type
+
+o <- c(125,225,150)
+theta <- .475
+
+e <- 500*c(theta^2,2*theta*(1-theta), (1-theta)^2)
+
+x <- sum((o-e)^2/e)
+x
+
+# compute p-value
+1 - pchisq(x,3-1-1)
+```
+
+
+## Slide Set 2 --> linear models
+
+#### Linear Models and Estimation
+```{r}
+# cat data
+cats <- cats
+
+attach(cats)
+
+plot(Bwt[Sex=="F"], Hwt[Sex=="F"], pch = 1, col = "red",
+     xlim = range(Bwt), ylim= range(Hwt))
+points(Bwt[Sex=="M"], Hwt[Sex=="M"], pch = 2, col = "blue")
+legend(2,20, pch = 1:2, col = c("red","blue"),
+       legend = c("female","male"))
+
+
+# first concentrate on female cats
+
+x <- Bwt[Sex=="F"]
+y <- Hwt[Sex=="F"]
+catF <- lm(y~x)
+names(catF)
+
+summary(catF)
+
+# compute LS estimate, just for illustration
+
+X <- model.matrix(catF)
+
+betahat <- solve(t(X) %*% X) %*% t(X) %*% y
+
+betahat
+
+
+#ANOVA table
+
+anova(catF)
+
+
+## Goodness of fit
+
+mcc <- cor(y, catF$fitted.values)
+mcc
+
+# shows that multiple correlation coefficient = r^2
+print(c(mcc^2, summary(catF)$r.squared))
+
+# plot observed vs fitted
+par(pty= "s")
+
+plot(y, catF$fitted.values, 
+     xlim = range(y, catF$fitted.values),
+     ylim = range(y, catF$fitted.values))
+abline(0,1)
+
+```
+
+#### Inference
+
+```{r}
+airquality <- airquality
+
+
+# construct histograms and matrix of scatterplots
+
+par(mfrow=c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1)+ 0.1)
+
+for(i in 1:4) hist(airquality[,i], 
+                   main = paste("hist of ",names(airquality[i])))
+       
+pairs(airquality)
+
+library(ggplot2)
+library(GGally)
+
+my_fn <- function(data, mapping, method = "loess",...) {
+  p <- ggplot(data = data, mapping = mapping) +
+    geom_point(size = .01) +
+    geom_smooth(method = method, size = .5,...)
+  p
+}
+       
+
+
+attach(airquality)
+
+air <- na.omit(airquality)
+detach(airquality)
+attach(air)
+
+
+fit0 <- lm(Ozone ~ 1, data = air)
+fit1 <- lm(Ozone ~ Solar.R, data = air)
+fit2 <- lm(Ozone ~ Solar.R + Wind, data = air)
+fit3 <- lm(Ozone ~ Solar.R + Wind + Temp, data = air)
+
+anova(fit0, fit1, fit2, fit3)
+
+anova(fit3)
+       
+
+## Companion to applied regression
+library(car)
+Anova(fit3, type = "III")
+
+summary(fit3)
+ 
+
+## Get confidene intervals for beta
+
+confint(fit3)
+
+library(car)
+confidenceEllipse(fit3, c(3,4))
+abline(v = confint(fit3)[3,], lty = 2)
+abline(h = confint(fit3)[4,],lty = 2)
+
+# check correlation between covariates and estimtaes
+cor(Wind, Temp)
+
+summary(fit3, corr = T)$corr
+
+
+## multiple comparison FWER increase with increase of q
+alpha <- .05
+q <- 1:20
+print(1-(1-alpha)^q, digits = 2)
+
+```
+
+Predictions for female cats
+
+```{r}
+cats <- cats
+
+attach(cats)
+
+
+x <- Bwt[Sex=="F"]
+y <- Hwt[Sex=="F"]
+catF <- lm(y~x)
+
+
+grid <- seq(min(x), max(x), len = 100)
+
+p1 <- predict(catF,  # object
+              newdata = data.frame(x = grid), # dataframe to look for variables with which to predict
+              se = T, # standard errors are requored
+              interval = "confidence") # type of interval calculated
+
+p2 <- predict(catF, newdata = data.frame(x = grid), se = T,
+              interval = "prediction")
+
+matplot(grid, # matrix of data for plotting
+        p1$fit, # confidence intervals
+        lty = c(1,2,2), col = c(1,2,2), # aes for grid data points are 1 and predicted is 2
+        type = "l",
+        xlab = "body weight", ylab = "heart weight",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("prediction of mean response")
+
+
+matplot(grid,
+        p2$fit, # prediction intervals
+        lty = c(1,2,2), col = c(1,2,2),
+        type = "l",
+        xlab = "body weight", ylab = "heart weight",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("prediction of future observations")
+
+
+```
+Pointwise and simultaneous bands for female cats
+```{r}
+cats <- cats
+
+attach(cats)
+
+
+x <- Bwt[Sex=="F"]
+y <- Hwt[Sex=="F"]
+catF <- lm(y~x)
+
+
+grid <- seq(min(x), max(x), len = 100)
+
+# compare pointwise and simultaneous bands
+
+# sheffe's method is used
+
+matplot(grid,
+        p1$fit,
+        lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "body weight", ylab = "heart weight")
+        points(x,y, cex = .5)
+        lines(grid,
+              p1$fit[,1]-sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+        lines(grid,
+              p1$fit[,1]+sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+```
+
+
+#### Diagnostics
+
+```{r}
+attach(airquality)
+
+air <- na.omit(airquality)
+detach(airquality)
+attach(air)
+
+
+fit0 <- lm(Ozone ~ 1, data = air)
+fit1 <- lm(Ozone ~ Solar.R, data = air)
+fit2 <- lm(Ozone ~ Solar.R + Wind, data = air)
+fit3 <- lm(Ozone ~ Solar.R + Wind + Temp, data = air)
+
+
+
+# two ways to compute standarized and deletion residuals
+
+rstand1 <- residuals(fit3)/(summary(fit3)$sig*sqrt(1-hatvalues(fit3)))
+
+rstand2 <- rstandard(fit3)
+
+rstud1 <- rstand1*sqrt((111-4-1)/(111-4-rstand1^2))
+rstud2 <- rstudent(fit3)
+
+
+# check outliers, adjusted using Bonferroni method
+
+library(car)
+outlierTest(fit3)
+# 117 onservation
+
+```
+Residual plots 
+
+```{r}
+par(mfrow = c(2,2))
+
+qqnorm(residuals(fit3), ylab = "residuals")
+qqline(residuals(fit3))
+title("qqplot of residuals")
+
+qqnorm(rstandard(fit3), ylab = "residuals")
+qqline(rstandard(fit3))
+title("qqplot of standardized residuals")
+
+plot(fitted(fit3), residuals(fit3), xlab = "fitted", ylab = "absolute residuals")
+abline(h = 0)
+title("residuals vs fitted")
+
+plot(fitted(fit3), abs(residuals(fit3)), xlab = "fitted", ylab = "absolute residuals")
+abline(h = 0)
+title("absolute residuals vs fited")
+
+```
+plot residual vs covariates
+
+```{r}
+par(mfrow = c(1,3))
+for(i in 2:4) plot(air[,i], residuals(fit3),
+                   xlab = names(air)[i], ylab = "residuals")
+abline(h = 0)
+```
+
+plot of leverages and cook's statistic
+
+```{r}
+par(mfrow = c(2,2))
+
+h <- hatvalues(fit3) #leverage
+cd <- cooks.distance(fit3) # cook's statistic
+plot(h/(1-h), cd, ylab = "cook statistic")
+identify(h/(1-h), cd, n = 3)
+
+fit3inf <- influence(fit3)
+
+#plot change in wind coef
+plot(fit3inf$coefficients[,3], ylab = "change in wind coef")
+identify(fit3inf$coefficients[,3], n = 4)
+
+#plot change in wind temp
+plot(fit3inf$coefficients[,4], ylab = "change in temp coef")
+identify(fit3inf$coefficients[,4], n = 1)
+
+
+library(car)
+
+influencePlot(fit3)
+```
+Residual plot using glm.diag.plots
+
+```{r}
+library(boot)
+
+fit3.1 <- glm(Ozone ~ Solar.R + Wind + Temp)
+glm.diag.plots(fit3.1)
+```
+
+Added variable and parital residual plot
+
+```{r}
+d <- residuals(lm(Ozone ~ Wind + Solar.R))
+m <- residuals(lm(Temp ~ Wind + Solar.R))
+
+plot(m, d, xlab = "temp residual", ylab = "ozone reisdual")
+abline(0, coef(fit3)[4])
+lines(lowess(m,d), col = "red", lty = 2)
+title("added variable plot for temp")
+
+pr <- residuals(fit3)+ coef(fit3)[4]*Temp
+
+plot(Temp, pr, xlab = "temp", ylab = "partial residuals")
+abline(0, coef(fit3)[4])
+lines(lowess(Temp, pr), col = "red", lty = 2)
+title("partial residual plot for temp")
+
+```
+Check correlation in air quality data
+
+```{r}
+r <- residuals(fit3)
+plot(r, ylab = "residuals")
+abline(h = 0)
+
+plot(r[-length(r)], r[-1],
+     xlab = expression(hat(epsilon)[i]),
+     ylab = expression(hat(epsilon)[i+1]))
+lines(lowess(r[-length(r)], r[-1]), col  = "red", lty = 2)
+
+library(car)
+
+durbinWatsonTest(fit3)
+```
+
+#### Transformations
+
+Transformations for air quality data
+```{r}
+# log transformation based on residual plot
+
+fit4 <- glm(log(Ozone) ~ Solar.R + Wind + Temp)
+par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+glm.diag.plots(fit4)
+
+
+# boxcox transformation
+
+library(MASS)
+
+boxcox(fit3, plotit = T, lambda = seq(-.5, 1, len = 100))
+
+fit5 <- glm(Ozone^.25 ~ Solar.R + Wind + Temp)
+par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+glm.diag.plots(fit5)
+
+
+cd <- cooks.distance(fit5)
+plot(cd, ylab = "cooks statistic")
+identify(cd, n = 3)
+
+```
+
+Fit without 3 influential points
+```{r}
+fit6 <- update(fit5, subset = -c(30,17,77))
+summary(fit6)
+```
+
+Partial residual plots
+```{r}
+
+fit5.1 <- lm(Ozone^.25 ~ Solar.R + Wind + Temp)
+
+for(i in 2:4) {
+  pr <- residuals(fit5.1)+ coef(fit5.1)[i]*air[,i]
+  plot(air[,i], pr, xlab = names(air)[i],
+       ylab = "partial residuals")
+abline(0, coef(fit5.1)[i])
+lines(lowess(air[,i], pr), col = "red", lty = 2)
+}
+```
+
+Nonlinear trend for Wind
+```{r}
+# for purpose of illustration, we only investigate nonlinear trend of wind
+
+fit10 <- update(fit5.1, Ozone^.25 ~ Solar.R + Wind + Temp + I(Wind^2) + I(Wind^3))
+
+summary(fit10)
+
+
+fit11 <- update(fit10, Ozone^.25~.-I(Wind^3))
+summary(fit11)
+```
+
+Check for collinearity using VIF
+
+```{r}
+attach(air)
+round(cor(air[,1:4]),3)
+
+vif(fit3)
+
+x <- model.matrix(fit3)[,-1]
+e <- eigen(t(x)%*%x)
+sqrt(e$val[1]/e$val)
+
+# no sign of collinearity!
+```
+
+
+#### Variable Selection
+
+State Data
+```{r}
+data(state)
+
+statedata <- data.frame(state.x77, row.names = state.abb)
+```
+
+
+**simple backward elimination**
+```{r}
+fit1 <- lm(Life.Exp ~. , data = statedata)
+summary(fit1)
+
+fit2 <- update(fit1, .~.-Area)
+summary(fit2)
+
+fit3 <- update(fit2, .~. - Illiteracy)
+summary(fit3)
+
+fit4 <- update(fit3, .~. - Income)
+summary(fit4)
+
+fit5 <- update(fit4, .~. - Population)
+summary(fit5)
+
+
+```
+
+**stepwise procedures**
+```{r}
+
+# chose a model by AIC in stepwise wlgorithm
+
+## forward addition
+step(lm(Life.Exp~1, data = statedata),
+     scope = list(upper=formula(fit1)),
+     direction = "forward")
+
+# note: up to an additive constant (like log-likelihoods)
+# AIC colum: resulting AIC when variable is added
+# the smaller, the better
+
+
+
+## backward elimination
+step(fit1, direction = "backward")
+
+## stepwise regression or both
+
+step(fit1, direction = "both")
+```
+
+**Cp and adjusted R-square**
+
+including plots of AIC, BIC, Cp, and adjusted R^2
+```{r}
+library(leaps)
+
+a <- regsubsets(formula(fit1), data = statedata,
+                method = "exhaustive")
+
+(rs <- summary(a))
+
+n <- nrow(statedata)
+AIC <- n*log(rs$rss) + 2*(2:8)
+BIC <- n*log(rs$rss) + log(n)*(2:8)
+plot(2:8, AIC, xlab = "Number of parameters", ylab = "AIC")
+plot(2:8, BIC, xlab = "Number of parameters", ylab = "BIC")
+plot(2:8, rs$cp, xlab = "Number of parameters", ylab = "Cp statistic")
+abline(0,1)
+
+plot(2:8, rs$adjr2, xlab = "Number of parameters", ylab = "Adjusted R-square")
+```
+
+**Cross-validation**
+```{r}
+library(boot)
+
+## leave-one-out CV
+cv.glm(statedata, 
+       glm(Life.Exp ~., data = statedata))$delta # calculates the estimated k-fold 
+
+cv.glm(statedata, 
+       glm(Life.Exp~.-Income, data = statedata))$delta
+
+## 10-fold CV
+cv.glm(statedata, glm(Life.Exp~., data = statedata), K = 10)$delta
+
+## 10-fold CV to select the model
+attach(statedata)
+
+X <- model.matrix(fit1)
+fold <- sample(rep(1:10,5))
+pse.cv <- matrix(NA, 7, 10)
+
+for(i in 1:7) {
+for(j in 1:10) {
+  tmp <- lm(Life.Exp~X[,rs$which[i,]]-1, subset=fold!=j)
+  pred <- X[fold==j, rs$which[i,]]%*%coef(tmp)
+  pse.cv[i,j] <- mean((Life.Exp[fold==j]-pred)^2)
+  }}
+
+plot(2:8, apply(pse.cv, 1, mean), xlab = "Number of parameters", 
+     ylab = "CV estimates of prediction errors")
+```
+
+**Ridge regression**
+```{r}
+library(glmnet)
+
+fit.ridge <- glmnet(X, Life.Exp, lambda.min = 0, nlambda = 101, alpha = 0)
+
+plot(fit.ridge, xvar = "lambda", xlim = c(-8,7))
+text(-7, coef(fit.ridge)[-1, length(fit.ridge$lambda)], labels = colnames(X), cex = 0.6)
+
+fit.ridge.cv <- cv.glmnet(X, Life.Exp, lambda.min = 0, nlambda = 101, alpha = 0)
+abline(v = log(fit.ridge.cv$lambda.min), col = "red")
+mtext("CV estimate", side = 1, at = log(fit.ridge.cv$lambda.min), cex = .6)
+
+plot(fit.ridge.cv)
+```
+
+**LASSO**
+```{r}
+set.seed(294)
+
+X <- model.matrix(fit1)[,-1]
+fit.lasso <- glmnet(X, Life.Exp, lambda.min = 0, nlambda = 101, alpha = 1)
+
+plot(fit.lasso, xvar = "lambda", xlim = c(-8,0))
+text(-7, coef(fit.lasso)[-1, length(fit.lasso$lambda)], labels = colnames(X), cex = .6)
+fit.lasso.cv <- cv.glmnet(X, Life.Exp, lambda.min = 0, nlambda = 101)
+abline(v = log(fit.lasso.cv$lambda.min), col = "red")
+mtext("CV estimate", side = 1, at = log(fit.lasso.cv$lambda.min), cex = .6)
+
+plot(fit.lasso.cv)
+```
+
+**Compare estimates**
+
+```{r}
+coef.ridge <- predict(fit.ridge, type = "coefficients", s = fit.ridge.cv$lambda.min)
+coef.lasso <- predict(fit.lasso, type = "coefficients", s - fit.lasso.cv$lambda.min)
+cbind(coef(fit1), as.vector(coef.ridge), as.vector(coef.lasso))
+```
+
+#### Analysis of Variance
+
+```{r}
+library(MASS)
+attach(michelson)
+plot(Expt, Speed, xlab  = "experiement no", ylab = "speed")
+```
+
+**Fit one-way model**
+```{r}
+is.factor(Expt)
+
+fit1 <- lm(Speed ~ Expt)
+summary(fit1)
+
+## check side condition
+model.matrix(fit1)
+attr(,"assign")
+attr(, "contrasts")
+attr(, "contrasts")$Expt
+
+# sum to zero condition
+
+model.matrix(lm(Speed ~ Expt - 1))
+
+# set u = 0
+
+library(boot)
+glm.diag.plots(glm(Speed ~ Expt))
+
+boxcox(fit1, plotit = T, lambda = seq(0,4, len = 100))
+
+fit2 <- lm(Speed^2 ~ Expt)
+summary(fit2)
+
+glm.diag.plots(glm(Speed^2 ~ Expt))
+
+fit1.1 <- aov(Speed ~ Expt)
+summary(fit1.1)
+
+plot(TukeyHSD(fit1.1))
+```
+**No control and Bonferroni**
+```{r}
+pairwise.t.test(Speed, Expt, p.adj = "none")
+# pairwise comparisons using t-tests with pooled sd
+# p value adjustment method  = none
+
+pairwise.t.test(Speed, Expt, p.adj = "bonferroni")
+# pairwise comparisons using t tests with pooled sd
+# p value adjustment method  = bonferroni
+
+
+```
+
+**control with false discovery rate**
+```{r}
+
+pairwise.t.test(Speed, Expt, p.adj = "BH")
+# pairwise comparisons using t tests with pooled sd
+# p value adjustment method  = benjamini-hochberg
+
+```
+
+**Contrasts**
+
+```{r}
+attach(michelson)
+library(contrast)
+
+contrast
+contrast(fit1, list(Expt = as.factor(1)),
+         list(Expt = as.factor(2)))
+
+contrast(fit1, list(Exp = as.factor(1:2)),
+         list(Expt = as.factor(3:4)), type = "average")
+
+contrast(fit1, list(Exp = as.factor(1:2)),
+         list(Expt = as.factor(4)), type = "average")
+```
+
+**Machine example**
+y = score
+A = machine (3 levels)
+B = worker (6 levels) --> treated as a random factor for now
+```{r}
+library(nlme)
+attach(Machines)
+isBalanced(Machines)
+
+plot(Machines, outer = ~Machine, layout = c(3,1))
+
+interaction.plot(Machine, Worker, score, cex = .5)
+
+```
+
+**fit two-way fixed effects model**
+```{r}
+# worker factor is ordered, 6 is the first 
+
+options(constrasts = c("contr.treatment", "contr.treatment"))
+
+fit1 <- lm(score ~ Machine*Worker)
+summary(fit1)
+
+glm.diag.plots(glm(score ~ Machine*Worker))
+```
+**Type I and III SS's**
+```{r}
+anova(fit1)
+
+library(car)
+Anova(fit1, test.statistic = "LR", type = "III")
+
+```
+
+**Contrasts**
+```{r}
+library(contrast)
+
+# machine a vs machine c
+
+contrast(fit1, list(Machine = "A", Worker = levels(Worker)),
+         list(Machine = "C", Worker = levels(Worker)),
+         type = "average")
+
+# machine b vs machine c
+contrast(fit1, list(Machine = "B", Worker= levels(Worker)),
+        list(Machine = "C", Worker = levels(Worker)),
+        type = "average")
+
+# worker 6 vs others on machin A
+contrast(fit1, list(Machine = "A", Worker = levels(Worker)[-1]),
+         list(Machine = "A", Worker = levels(Worker)[1]),
+         type = "average")
+
+```
+
+**Two-way ANOVA - unbalanced design**
+```{r}
+MachinesUnbal <- Machines[-c(2,3,6,8,9,12,19,20,27,33),]
+
+fit2 <- lm(score ~ Machine*Worker, data = MachinesUnbal)
+summary(fit2)
+```
+
+**Type I and III SS's - unbalanced**
+```{r}
+
+anova(fit2)
+
+Anova(fit2, test.statistic = "LR", # likelihood ratio
+      type = "III")
+
+```
+
+
+**Unbalanced four-way ANOVA**
+
+```{r}
+
+library(MASS)
+attach(quine)
+
+table(Lrn, Age, Sex, Eth)
+
+Means  <- tapply(Days, list(Eth, Sex, Age, Lrn), mean)
+Vars <- tapply(Days, list(Eth, Sex, Age, Lrn), var)
+SD <- sqrt(Vars)
+
+plot(Means, Vars, xlab = "cell means", ylab = "cell variances")
+plot(Means, SD, xlab = "cell means", ylab = "cell sd")
+
+## Aitkin used transformation log(days + 1)
+boxcox(Days+1 ~ Eth*Sex*Age*Lrn, lambda = seq(-.05, .45,
+                                              len = 100))
+
+# log(Days+1) not appropriate, try log(Days+alpha)
+logtrans(Days~Eth*Sex*Age*Lrn, alpha = seq(.75, 6, len = 100
+                                           )) # take 2.5
+```
+
+Analysis of Quine data
+```{r}
+fit1 <- aov(log(Days+2.5) ~ .^4, quine)
+anova(fit1)
+
+
+fit2 <- update(fit1, .~. - Eth:Sex:Age:Lrn)
+drop1(fit2, test = "F")
+
+fit3 <- update(fit2, .~. -Eth:Sex:Age)
+drop1(fit3, test = "F")
+
+fit4 <- update(fit3, .~.-Sex:Age:Lrn)
+drop1(fit4, test = "F") # single term deletions
+
+fit5 <- update(fit4, .~. - Eth:Age:Lrn)
+drop1(fit5, test = "F")
+
+fit6 <- update(fit5, .~. -Eth:Age)
+drop1(fit6, test = "F")
+
+fit7 <- update(fit6, .~. - Age:Lrn)
+drop1(fit7, test = "F")
+
+summary(fit7)
+
+fit8 <- step(fit1)
+
+```
+
+#### Analysis of covariance
+
+- if you have a continuous and factor type variable
+
+Cat example
+
+```{r}
+plot(Bwt[Sex=="F"], Hwt[Sex=="F"], pch = 1, col = "red",
+     xlab = "body weight", ylab = "heart weight",
+     xlim = range(Bwt), ylim = range(Hwt))
+points(Bwt[Sex == "M"], Hwt[Sex=="M"], pch = 2, col = "blue")
+abline(lm(Hwt[Sex == "F"]~ Bwt[Sex=="F"]), col = "red")
+abline(lm(Hwt[Sex == "M"]~ Bwt[Sex=="M"]), col = "blue")
+legend(2,20, pch = 1:2, lty = c(1,1), col = c("red","blue"),
+       legend = c("F", "M"))
+
+attach(cats)
+options(contrasts = c("contr.sum", "contr.sum"))
+catFM1.1 <- lm(Hwt ~ Sex*Bwt)
+summary(catFM1.1)
+
+model.matrix(catFM1.1)
+attr(,"assign")
+attr(,"contrasts")
+attr(,"contrasts")$Sex
+
+
+options(constrast = c("contr.treatment", "contr.poly"))
+
+catFM1.2 <- lm(Hwt ~ Sex*Bwt)
+summary(catFM1.2)
+
+model.matrix(catFM1.2)
+attr(,"assign")
+attr(,"contrasts")
+attr(,"contrasts")$Sex
+
+
+catFM1.3 <- lm(Hwt ~ Sex/Bwt-1)
+summary(catFM1.3)
+
+model.matrix(catFM1.3)
+attr(,"assign")
+attr(,"contrasts")
+attr(,"contrasts")$Sex
+
+anova(catFM1.2)
+
+catFM2 <- lm(Hwt ~ Sex + Bwt)
+summary(catFM2)
+
+
+anova(catFM1.2, catFM2)
+
+catFM3 <- lm(Hwt ~ Sex:factor(Bwt))
+anova(catFM1.2, catFM3)
+
+glm.diag.plots(glm(Hwt~Sex*Bwt))
+
+boxcox(catFM1.2, plotit = T, lambda  = seq(-1, 1, len = 100))
+
+
+catFM4 <- lm(log(Hwt) ~ Sex*log(Bwt))
+summary(catFM4)
+
+glm.diag.plots(glm(log(Hwt)~ Sex*log(Bwt)))
+boxcox(catFM4, plotit = T, lambda = seq(-.5, 2.5, len = 100))
+
+
+catFM5 <- lm(log(Hwt) ~ Sex + log(Bwt))
+summary(catFM5)
+
+catFM6 <- lm(log(Hwt) ~ log(Bwt))
+summary(catFM6)
+
+
+catFM7.1 <- lm(log(Hwt) - log(Bwt) ~ log(Bwt))
+summary(catFM7.1)
+
+catFM7.2 <- lm(log(Hwt) ~ offset(log(Bwt)) + log(Bwt))
+summary(catFM7.2)
+```
+
+ To get an unbiased estimate of each  parameters of $\beta$ in our model we computed the least squares (ls) estimate. 
+
+To summarize
