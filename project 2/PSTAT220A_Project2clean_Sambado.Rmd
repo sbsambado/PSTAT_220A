@@ -1,0 +1,685 @@
+---
+title: "PSTAT 220A Project 2"
+author: "Samantha Sambado"
+date: "12/7/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+library(ggplot2)
+library(tidyverse)
+library(readr)
+library(ggpubr)
+library(tidyverse)
+library(kableExtra)
+library(car)
+library(MASS)
+library(boot)
+library(psych)
+library(glmnet)
+library(jtools)
+
+prop <- read_csv("property.csv")
+dim(prop) # 84 rows, 5 columns
+str(prop)
+
+prop_fixed <- read.table("property.txt", header = TRUE)
+
+prop_na <- na.omit(prop_fixed)
+
+```
+
+
+## **Title:  Size does matter when buying a house**
+
+## **Executive Summary**
+
+Affordable housing is a challenge that is felt by many people in the United States and has created lasting social inequities. Many factors contribute to the increase of property prices and lack of affordable housing that researchers from a multitude of academic and social backgrounds have investigated. In this report, I investigate the association between property prices and four factors such as size, age, distance to city center and distance to toxic site which can be used as proxies for socio-economic circumstances. With a multiple regression approach, I found that the size of a property is most strongly associated with property price followed by distance to a toxic site which is negatively associated with property price. However, additional analyses that includes a spatial and temporal framework should be included in any recommendations.
+
+## **Introduction**
+
+The affordable housing crisis is an ongoing challenge faced by many Americans, especially the poor and vulnerable. The lack of adequate housing has adverse effects on public services such as health care and education (Freeman 2002). Housing prices are influenced by many factors that can be measured and fixed (i.e. size of house, distance to beach, etc.) or unmeasured and shifting (i.e. racism, air quality, policy decisions) (Ihlanfeldt et al. 2009). 
+
+Some factors, such as distance to toxic centers, can serve as proxies for measured and unmeasured effects in convoluteted ways. Where toxic sites get built is influenced by policy makers and can decrease the value of one's home as soon as a center gets placed, which tend to occur in areas of low socio-economic status. However, if one is looking for affordable housing, near toxic sites tend to have lower population densities meaning there is potential to build a larger house which is seen as more profitable than a smaller house if size was all that mattered. Evaluating property prices is complex and should rely on more than a handful of factors. Nonetheless, this report tries to find association - not causation - between property values and some relevant factors without controlling for explicit impacts of a property owners socio-economic status.
+
+The dataset contains a random sample of 83 properties for sale in a city. The five variables collected are: **size** ($m^2$) of the property, **age** (years) of the property, distance (km) from the property to the city center (**dc**), distance (km) from the property to a toxic waste disposal site (**dt**) and **price** of the listed property (in thousands of dollars). The price of our property is our main response variable of interest and we explored how price depends on the other covariates size, age, dc and dt (**Fig. 1**).  Summary statistics of each variable can be found in **Table 1**.
+
+```{r fig 1, fig.cap= "Property value as a response to multiple variables. Regression lines were made with 'loess' method.", fig.height = 4}
+s <- ggplot(prop_fixed, aes(x = size, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  labs(x = expression("Size (m)"^{2}),
+      tag = "A",
+      y = "Price ($)",
+      #title = "prop_fixederty price based on size"
+      ) +
+  theme_bw() +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"))
+
+a <- ggplot(prop_fixed, aes(x = age, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  labs(#title = "prop_fixederty price based on age",
+        y = "Price ($)", x = "Age (years)",
+              tag = "B") +
+  theme_bw()+
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"))
+
+dc <- ggplot(prop_fixed, aes(x = dc, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  labs(#title = "prop_fixederty price based on distance to city center",
+       y = "Price ($)", x = "Distance to city center (km)",
+             tag = "C") +
+  theme_bw()+
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"))
+
+
+dt <- ggplot(prop_fixed, aes(x = dt, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  labs(#title = "prop_fixederty price based on distance to toxic site",
+       y = "Price ($)", x = "Distance to toxic site (km)",
+       tag = "D") +
+  theme_bw() +
+  theme(axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"))
+
+fig1 <- ggarrange(s,a,dc,dt)
+
+annotate_figure(fig1,
+         top = text_grob("Property Price", face = "bold", size = 14, color = "red"))
+```
+
+
+## **Methods**
+
+
+#### *Linear model construction:*  
+
+
+All variables are numeric and continuous and were fitted with multiple regression models. For the linear regression model I assumed that
+
+
+$$y_i = \Sigma^p_{j=1} \beta_jx_{ij} + \epsilon_i$$
+
+where $\epsilon_i$ are iid random errors with mean zero and variance $\sigma^2$ resulting in the full model:
+
+$$price_i = \beta_1 + (\beta_2*size) + (\beta_3*dt) + (\beta_4*age) + (\beta_5*dc) + \epsilon_i$$
+
+and three nested models:
+
+$$price_i = \beta_1 + (\beta_2*size) + \epsilon_i$$
+
+$$price_i = \beta_1 + (\beta_2*size) + (\beta_3*dt) + \epsilon_i$$
+
+$$price_i = \beta_1 + (\beta_2*size) + (\beta_3*dt) + (\beta_4*age)  + \epsilon_i$$
+
+
+#### *Estimation:*   
+
+
+To compare the goodness-of-fit for regression models to aid in variable selection I used **adjusted $R^2$** to adjust for the number of independent variables (i.e. the degree of freedom). This approach seemed more appropriate than $R^2$ because adjusted $R^2$ can be negative if I add too many variables whereas $R^2$ can only increase with the addition of other variables. I then made an observed vs fitted plot for a model with the appropriate amount of parameters based on $R^2$.
+
+
+#### *Inference:* 
+
+With my chosen linear regression model, I made a predictions for a new set of covariates. To compute the standard error and construct **confidence interval for the predictions** I calculated 1) future mean response and 2) future observations.  
+
+
+To construct confidence intervals for a collection of points I used **pointwise and simultaneous confidence bands**. The simultaneous coverage probability of a collection of confidence intervals is the probability that all of them cover their corresponding true values simultaneously. I will use Scheffe's method compare pointwise and simultaneous bands because I am assuming the was no planned hypothesis for this data collection and with this conservative method I could accomplish more data snooping.
+
+
+#### *Diagnostics:*   
+
+
+I address the four assumptions of the linear model in the following ways:   
+
+
+
+
++ **Assumption 1**: The model is correct.  I made sure to select variables that are relevant based on adjusted $R^2$, p-values, and common sense. I also selected the reduced model to follow the rules of parsimony.  
+  
+ 
+
++ **Assumption 2**: Responses are uncorrelated. I checked the correlation with a pairs.panel() plot and cor(). I then calculated the VIF to check for collinearity between covariates.   
+
+
+
++ **Assumption 3**: Equal variance. I made residual plots that check for constant variance.   
+
+
+
++ **Assumption 4**: Normality. I made a QQ-Plot of the fitted residuals and a histogram of the variable's distribution (**Appendix**). 
+
+
+In addtion to the above methods, I addressed outliers or inconsistent points which could have potential influence and leverage on the outcome of our models. I performed an outlier test using `outlierTest()` and `influencePlot()` for points of influence and leverage using Cook's distance. To reduce the influence of a single observation I computed deletion residuals based on the overall fit of the selected model (also known as jackknife). These additional graphs can be found in the Appendix.
+
+
+
+#### *Transformation:*   
+
+
+Based on diagnostic plots, it looked like there was potentially a violation of constant variance. The best transformation was the log(price) transformation. In addition to the transformation, the diagnostic plots suggested that I remove several outliers in the dataset that may influence the inference of the model. 
+
+
+#### *Variable Selection:*   
+
+
+For variable selection I used stepwise procedures such as forward addtion (bottom-up), backward elimination (top-down) and stepwise regression (combination of both). Due to inconsistencies in variable selection with **stepwise procedures**, I performed additional tests to calculate the **AIC**, **BIC**, **Mallow's Cp** criterions and **adjusted $R^2$**. And lastly to provide a fuller assessment of which variables are valuable for the final model, I performed soft-thresholding with **lasso** to solve the penalized least squares.
+
+## **Results**
+
+#### *Estimation:*   
+
+Based on the **adjusted $R^2$**, the model that contains two variables is sufficient enough to explain variation while adhering to the **rules of parsimony** $price ~ size + dt$ (**adjusted $R^2$ = 0.5177**). The addition of the third and fourth variable only improved the adjusted $R^2$ by ~.02 (adjusted $R^2$ = 0.5355 and 0.5301 for model with 3 and 4 variables, respectively). When I plotted observed vs fitted price from the model with two variables, the model appeared to fit closely most of the points, meaning the points were close to the red 1:1 line (**Fig. 2**).
+
+
+```{r include = FALSE}
+
+fit0 <- lm(price ~ 1, data = prop_na)
+fit1 <- lm(price ~ size, data = prop_na)
+fit2 <- lm(price ~ size + dt, data = prop_na)
+fit3 <- lm(price ~ size + dt + age, data = prop_na)
+fit4 <- lm(price ~ size + dt + age + dc, data = prop_na)
+
+summary(fit0) # 0.2815, 0.008873, 0.1686, 0.002829
+summary(fit1) # 0.2815
+summary(fit2) # 0.5177
+summary(fit3) # 0.5288
+summary(fit4) # 0.5301
+
+
+```
+
+```{r fig.cap = "Observed vs fitted values of price"}
+## goodness of fit 
+
+
+plot(prop_na$price, fit2$fitted.values,
+     xlab = "Observed Price ($)",
+     ylab = "Fitted Price ($)",
+     ylim = range(na.omit(prop_fixed$price), fit2$fit),
+     xlim = range(na.omit(prop_fixed$price), fit2$fit),
+     main = "Observed vs fitted with best fit model")
+abline(0,1, col = "red")
+```
+
+
+#### *Inference:* 
+
+With my transformed variable price, the prediction for future mean response and future observations performed well for both size and dt (**Fig. 3**). Yet both variables had a different type of association with price. For size, there was a general term for both graphs that when size increased so did the log of price. Unlike for dt, where there was a negative association between log of price and distance to toxic center. So if you were just looking at those individual variables and their relationship with property price they have opposite associations and may require to be evaluated in a multiple regression model. 
+
+```{r fig.cap = "Prediction of mean and future observations of price with two influential variables",  mar = c(.5,.5,.5,.5)}
+
+par(mfrow = c(2,2))
+attach(prop_na)
+x <- size
+y <- log(price)
+mod1.3 <- lm(y~x, data = prop_na)
+
+
+grid <- seq(min(x), max(x), len = 83)
+
+p1 <- predict(mod1.3,  # object
+              newdata = data.frame(x = grid), # dataframe to look for variables with which to predict
+              se = T, # standard errors are requored
+              interval = "confidence") # type of interval calculated
+
+p2 <- predict(mod1.3, newdata = data.frame(x = grid), se = T,
+              interval = "prediction")
+
+matplot(grid, # matrix of data for plotting
+        p1$fit, # confidence intervals
+        lty = c(1,2,2), col = c(1,2,2), # aes for grid data points are 1 and predicted is 2
+        type = "l",
+        xlab = "Size (m^2)", ylab = "log(Price) ($)",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("Pred. of Mean Response")
+
+
+matplot(grid,
+        p2$fit, # prediction intervals
+        lty = c(1,2,2), col = c(1,2,2),
+        type = "l",
+        xlab = "Size (m^2)", ylab = "log(Price) ($)",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("Pred. of Future Observations")
+
+
+
+#### try with dt
+
+attach(prop_na)
+x <- prop_fixed$dt
+y <- log(price)
+mod1.3 <- lm(y~x, data = prop_na)
+
+
+grid <- seq(min(x), max(x), len = 83)
+
+p1 <- predict(mod1.3,  # object
+              newdata = data.frame(x = grid), # dataframe to look for variables with which to predict
+              se = T, # standard errors are requored
+              interval = "confidence") # type of interval calculated
+
+p2 <- predict(mod1.3, newdata = data.frame(x = grid), se = T,
+              interval = "prediction")
+
+matplot(grid, # matrix of data for plotting
+        p1$fit, # confidence intervals
+        lty = c(1,2,2), col = c(1,2,2), # aes for grid data points are 1 and predicted is 2
+        type = "l",
+        xlab = "Dt (km)", ylab = "log(Price) ($)",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("Pred. of Mean Response")
+
+
+matplot(grid,
+        p2$fit, # prediction intervals
+        lty = c(1,2,2), col = c(1,2,2),
+        type = "l",
+        xlab = "Dt (km)", ylab = "log(Price) ($)",
+        ylim = range(p1$fit, p2$fit, y))
+points(x, y, cex = .5) # plot actual data
+title("Pred. of Future Observations")
+
+
+```
+
+
+This trend still held when I went with the Scheffé method to construct confidence intervals (**Fig. 4**). Price is positively associated with size and negatively associated with distance to toxic site.
+
+
+```{r  mar = c(.5,.5,.5,.5), fig.cap = "Simultaneous and Pointwise Confidence Intervals"}
+par(mfrow = c(1,2))
+
+# sheffe's method is used
+attach(prop_na)
+x <- size
+y <- log(price)
+mod1.3 <- lm(y~x, data = prop_na)
+
+
+grid <- seq(min(x), max(x), len = 83)
+
+p1 <- predict(mod1.3,  # object
+              newdata = data.frame(x = grid), # dataframe to look for variables with which to predict
+              se = T, # standard errors are requored
+              interval = "confidence") # type of interval calculated
+
+p2 <- predict(mod1.3, newdata = data.frame(x = grid), se = T,
+              interval = "prediction")
+
+
+matplot(grid,
+        p1$fit,
+        lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "Size (m^2)", ylab = "log(Price) ($)")
+        points(x,y, cex = .5)
+        lines(grid,
+              p1$fit[,1]-sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+        lines(grid,
+              p1$fit[,1]+sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+        legend("topleft", legend = c("simultaneous", "pointwise"), col = c("blue", "red"), lty = c(3,2),cex = .4)
+        
+        
+        
+## now try dt
+x <- prop_fixed$dt
+y <- log(price)
+mod1.3 <- lm(y~x, data = prop_na)
+
+
+grid <- seq(min(x), max(x), len = 83)
+
+p1 <- predict(mod1.3,  # object
+              newdata = data.frame(x = grid), # dataframe to look for variables with which to predict
+              se = T, # standard errors are requored
+              interval = "confidence") # type of interval calculated
+
+p2 <- predict(mod1.3, newdata = data.frame(x = grid), se = T,
+              interval = "prediction")
+
+matplot(grid,
+        p1$fit,
+        lty = c(1,2,2), col = c(1,2,2), type = "l",
+        xlab = "Dt (km)", ylab = "log(Price) ($)")
+        points(x,y, cex = .5)
+        lines(grid,
+              p1$fit[,1]-sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+        lines(grid,
+              p1$fit[,1]+sqrt(2*qf(.95, 2, length(x)-2))*p1$se.fit,
+              lty = 3, col = "blue")
+        legend("topright", legend = c("simultaneous", "pointwise"), col = c("blue", "red"), lty = c(3,2), cex = .4)
+
+```
+
+
+#### *Diagnostics and Transformations:*   
+
+In summary, I found that untransformed price violated the normality assumption and a log transformation worked best compared to boxcox. Before the transformation, the constant variance assumption was a slight concern due to the 'residual vs fitted' plots with  slight pattern which was corrected after a transformation and the removal of outliers (**Fig. 5**). There were some outliers, notably observation 45, 22 and 59, that were removed. Results presented in the main text are from the dataset without the outliers but in the appendix results from the full dataset can be found. However with and without the outliers produced the same final consensus of results. The below diagnostic plots (**Fig. 5**) represent the best select model $log(price) \sim size + age$ (**p-value = 3.304e-14, F-statistic = 47.72, df = 77, adjusted $R^2$ =  0.54**). Size is positively associated with property price (**estimate = 0.009, sd = 0.001, t-value = 8.116, p-value = 6.07e-12**) whereas distance to toxic center (dt) is negatively associated with property price (**estimate = -0.005, sd = 0.000, t-value = -6.398, p-value = 1.12e-08**). Size (**p-value = 6.07e-12**) has a more significant effect than distance to toxic center (**p-value = 1.12e-08**) in this model for this provided data. 
+
+```{r include = FALSE}
+
+par(mfrow = c(2,2))
+# fit models again
+fit2 <- lm(log(price) ~ size + dt, data = prop_na)
+
+# fit without influential points for log transformation
+
+fit2.1 <- update(fit2, subset = -c(45, 22, 59))
+
+summary(fit2.1)
+```
+
+```{r}
+#summ(fit2.1)
+```
+
+```{r fig.cap = "Diagnostic Plot for best fit model", mar = c(.5,.5,.5,.5)}
+par(mfrow = c(2,2))
+
+plot(fit2.1)
+
+
+```
+
+
+
+To check collinearity between covariates size and dt, I looked at the variance inflation factor with `vif()` that calculate a score of 1.013836, which is below five, meaning I am not worried about collinearity for size or dt.
+
+
+```{r}
+# vif(fit2.1)
+```
+
+
+#### *Variable Selection:*   
+
+The results from **stepwise forward addition** was that including size, age, and dt would provide the lowest AIC (**-285.44**) however because the second lowest AIC (**-282.97**) was less than 10 point difference in AIC score - which included just size and dt - and is supported by my other methods, I will select the model that uses just size and dt. This differed when I ran **backward elimination** and **stepwise regression** which suggested the model with the lowest AIC (**-289.53**) included all variables but dc, which contradicts other variable selection methods.
+
+Due to inconsistencies in variable selection I performed additional tests to calculate the **AIC**, **BIC**, **Mallow's Cp** criterions and **adjusted $R^2$**. AIC, BIC, Mallow's Cp suggest that four parameters would produce the lowest criterion scores (**Fig. 6**), however, the difference between four and three parameters across those criterion scores was marginally small and when BIC took into consideration the penalty for additional parameters, four parameters performed almost the same as three. Adjusted $R^2$ also agreed that four parameters performs the best with a value of **0.529**, but **0.509** value for 3 parameters is very close and one less parameter to work with (**Fig. 6**). 
+
+```{r include = FALSE}
+
+fit1.1 <- lm(log(price) ~ size + dt + age + dc, data = prop_fixed)
+fit1.2 <- update(fit1.1, subset = -c(45, 22, 59))
+
+## forward addition
+step(lm(log(price)~1, data = prop_fixed),
+     scope = list(upper=formula(fit1.2)),
+     direction = "forward")
+
+step(fit1.2, direction = "backward")
+
+step(fit1.2, direction = "both")
+```
+
+
+```{r include = FALSE}
+
+par(mfrow = c(2,2))
+# want model with small p and Cp, points close to line
+
+library(leaps)
+
+a <- regsubsets(formula(fit1.2), data = prop_fixed,
+                method = "exhaustive")
+
+(rs <- summary(a))
+n <- nrow(prop_fixed)
+AIC <- n*log(rs$rss) + 2*(2:5)
+BIC <- n*log(rs$rss) + log(n)*(2:5)
+
+```
+
+
+```{r mar = c(.5,.5,.5,.5), fig.cap= "Variable selection criterion plots"}
+
+par(mfrow = c(2,2))
+
+plot(2:5, AIC, xlab = "Number of parameters", ylab = "AIC")
+plot(2:5, BIC, xlab = "Number of parameters", ylab = "BIC")
+plot(2:5, rs$cp, xlab = "Number of parameters", ylab = "Cp statistic")
+abline(0,1)
+
+plot(2:5, rs$adjr2, xlab = "Number of parameters", ylab = "Adjusted R-square")
+
+```
+
+**Lasso** thresholding also provided similar results with the least mean square error (MSE) resulting in a model with four parameters but the MSE was still minimal for three parameters (**Fig. 7**). The parameters that take the longest to shrink to zero, meaning they have contributed importance to the model are: size, dt, age, dc in that respective order.
+
+```{r mar = c(.5,.5,.5,.5), fig.cap= "LASSO thresholding" }
+
+par(mfrow = c(2,2))
+
+set.seed(294)
+
+X <- model.matrix(fit1.1)[,-1]
+fit.lasso <- glmnet(X, price, lambda.min = 0, nlambda = 101, alpha = 1)
+
+plot(fit.lasso, xvar = "lambda", xlim = c(-2,6))
+text(-1.8, coef(fit.lasso)[-1, length(fit.lasso$lambda)], labels = colnames(X), cex = .6)
+
+fit.lasso.cv <- cv.glmnet(X, price, lambda.min = 0, nlambda = 101)
+abline(v = log(fit.lasso.cv$lambda.min), col = "red")
+mtext("CV estimate", side = 1, at = log(fit.lasso.cv$lambda.min), cex = .6)
+
+plot(fit.lasso.cv)
+```
+
+
+Given these results, although many of the test I performed suggested a model with four parameters (so potentially $price \sim size + dt + age$) instead of three parameters (potentially $price \sim size + dt$), the difference between those models is minimal enough that I believe the simpler model is appropriate enough for the provided data and will abide by Occam's razor. 
+
+
+```{r table 1}
+
+mean <- prop_fixed %>%
+  summarise_all(mean)
+
+sd <- prop_fixed %>%
+  summarise_all(sd)
+
+iqr <- prop_fixed %>%
+  summarise_all(IQR)
+
+min <- prop_fixed %>%
+  summarise_all(min)
+
+max <- prop_fixed %>%
+  summarise_all(max)
+
+summary <- rbind(mean, sd, min, max)
+rownames(summary) <- c("Mean", "Sd", "Min", "Max")
+
+kable(summary, caption = "Summary statistics of property observations", align = "l",   format.args = list(big.mark = ","), digits = c(1,1,1,1,1)) %>%
+  kable_styling(position = "c", latex_options = "HOLD_position") #bootstrap_options = c("striped","hoover"),
+
+
+
+```
+
+## **Conclusions & Recommendations** 
+
+There is a statistical association between property prices and size of property as well as distance to toxic site. The best fit model for property price was a multiple regression model that included the covariates **size** and **distance to toxic site (dt)**. Although **age** could have been included in the model, I decided against it because I wanted to follow the rules of parsimony and keep a simpler model and  age had outliers (>30 years) that greatly influenced the leverage and influence of the model. When outliers for age (> 25+ years old) were removed, there was almost no linear association between age and price making me think that there is in most recent years housing prices have not been based on age.
+
+Although distance to toxic site is an important covariate in price, this may be more important if we were looking at this question in a spatial framework and not hypothetical cities. A cities surrounding geography (i.e. near a beach, mountain or federally protected land) may be a determinant if a toxic site can be placed nearby. Another consideration for future analyses could be if houses are considered urban, suburban or rural. Typically there is high density of urban dwellings - meaning less space to make large sized houses - , however if it is a very populous city such as New York or Los Angeles, those urban dwellings can be separated by socio-economic status in inner-city neighborhoods. The wide range of property price around 15 km distance from city center could be a representation of the suburbs where homes tend to be larger in size and because size is a strong predictor of house value, depending on where the suburb is could influence the varying prices of those homes. 
+
+I recommend that in addition to size, which is an important covariate, socio-economic status, property classification (i.e. suburban), and access to public transportation be included in the next round of analyses. In terms of a buye who wants to make a profitable investment, it seems that buying a large house far away from a toxic site would be valued more than properties that don't have those characteristics.
+
+
+
+## References
+
+Freeman, L. 2002. America's affordable housing crisis: a contract unfulfilled. American Public Health Association 92: 709-712.
+
+Ihlanfeldt, K, and T. Mayock. 2009. Price discrimination in the housing market. Journal of Urban Economics 66: 125-140.
+
+## Appendix
+
+**1. Adjusted $R^2$ estimation values and model outputs**
+
+```{r}
+
+fit0 <- lm(price ~ 1, data = prop_na)
+fit1 <- lm(price ~ size, data = prop_na)
+fit2 <- lm(price ~ size + dt, data = prop_na)
+fit3 <- lm(price ~ size + dt + age, data = prop_na)
+fit4 <- lm(price ~ size + dt + age + dc, data = prop_na)
+
+summary(fit0) # 0.2815, 0.008873, 0.1686, 0.002829
+summary(fit1) # 0.2815
+summary(fit2) # 0.5177
+summary(fit3) # 0.5288
+summary(fit4) # 0.5301
+
+
+```
+
+**2. To check the distribution of variables before transformation**
+
+```{r}
+# histograms and matrix of scatterplots
+par(mfrow=c(3,2), mgp = c(2,1,0), mar = c(3,3,3,1)+ 0.1)
+
+hist(prop_fixed$price, main = "Price", xlab = "Price")
+hist(prop_fixed$size, main = "Size", xlab = "Size")
+hist(prop_fixed$dt, main = "Dt", xlab = "Dt")
+hist(prop_fixed$age, main = "Age", xlab = "Age")
+hist(prop_fixed$dc, main = "Dc", xlab = "Dc")
+
+
+pairs.panels(prop_fixed)
+```
+
+**3. The `pairs.panel()` highlights that the distribution of variables**
+```{r}
+prop_fixed$log_price <- log(prop_fixed$price)
+pairs.panels(prop_fixed)
+```
+
+**4. Outliers appeared to be a bigger issue in this dataset than normality or model fitting.** 
+```{r}
+outlierTest(fit2) # 59
+influencePlot(fit2) # 45, 59, 65, 47
+
+outlierTest(fit2.1) #49
+influencePlot(fit2.1) #49, 25, 79, 65, 47
+```
+
+**5.When I checked for systematic departure for any pattern of non-randomness in the residuals, it looked like the model perform well, meaning the model is correct with the right amount of variables that fit the data well, yet keep it as simple as possible.**
+
+```{r mar = c(.5,.5,.5,.5), fig.cap = "title"}
+par(mfrow = c(2,2))
+
+qqnorm(residuals(fit2.1), ylab = "residuals", main = "qqplot of residuals")
+qqline(residuals(fit2.1))
+
+qqnorm(rstandard(fit2.1), ylab = "residuals", main = "qqplot of standardized residuals")
+qqline(rstandard(fit2.1))
+
+plot(fitted(fit2.1), residuals(fit2.1), xlab = "fitted", ylab = "absolute residuals", main = "residuals vs fitted")
+abline(h = 0)
+
+plot(fitted(fit2.1), abs(residuals(fit2.1)), xlab = "fitted", ylab = "absolute residuals",main = "absolute residuals vs fited")
+abline(h = 0)
+
+
+```
+
+**6. Plot leverage and cook's statistic**
+```{r mar = c(.5,.5,.5,.5)}
+par(mfrow = c(2,2))
+
+h <- hatvalues(fit2.1) #leverage
+cd <- cooks.distance(fit2.1) # cook's statistic
+plot(h/(1-h), cd, ylab = "cook statistic")
+#identify(h/(1-h), cd, n = 3)
+
+fit2.1inf <- influence(fit2.1)
+
+#plot change in size coef
+plot(fit2.1inf$coefficients[,1], ylab = "change in size coef")
+#identify(fit2.1inf$coefficients[,1], n = 4)
+
+#plot change in age
+plot(fit2.1inf$coefficients[,2], ylab = "change in dt coef")
+#identify(fit2.1inf$coefficients[,2], n = 1)
+
+influencePlot(fit2.1)
+
+
+```
+
+
+**7. Companion to applied regression**
+```{r}
+library(car)
+Anova(fit2.1, type = "III")
+
+```
+
+**8. Get confidence intervals for beta**
+```{r}
+confint(fit2.1)
+
+library(car)
+confidenceEllipse(fit2.1, c(1,2))
+abline(v = confint(fit2.1)[1,], lty = 2)
+abline(h = confint(fit2.1)[2,],lty = 2)
+
+```
+
+**9. Boxcox transformation**
+```{r}
+library(MASS)
+
+boxcox(fit2, plotit = T, lambda = seq(-8, 15, len = 100)) # 3.8?
+
+fit2.3 <- glm(price^3.8 ~ size + age)
+par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+glm.diag.plots(fit2.3)
+
+
+cd <- cooks.distance(fit2)
+plot(cd, ylab = "cooks statistic")
+#identify(cd, labels=row.names(prop_na))
+```
+
+**10. Added variable and partial residual plot**
+```{r}
+# if nonlinear pattern then higher order term or transformation
+
+d <- residuals(lm(price ~ size + dt, data = prop_fixed))
+m <- residuals(lm(age ~ size + dt, data = prop_fixed))
+ 
+ plot(m, d, xlab = "age residual", ylab = "price reisdual")
+ abline(0, coef(fit2)[2])
+ lines(lowess(m,d), col = "red", lty = 2)
+ title("added variable plot for age")
+ # don't see linear trend so won't need transformation
+
+ pr <- residuals(fit2)+ coef(fit2)[2]*age
+ plot(age, pr, xlab = "age", ylab = "partial residuals")
+abline(0, coef(fit2)[2])
+ lines(lowess(age, pr), col = "red", lty = 2)
+ title("partial residual plot for age")
+```
+
